@@ -20,9 +20,9 @@ define('ALIAS_GENERATOR_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALIAS_GENERATOR_PLUGIN_URL', plugin_dir_url(__FILE__));
 
 // 包含必要文件
-require_once ALIAS_GENERATOR_PLUGIN_DIR . 'includes/class-Alias-generator-admin.php';
-require_once ALIAS_GENERATOR_PLUGIN_DIR . 'includes/class-Alias-generator-ajax.php';
-require_once ALIAS_GENERATOR_PLUGIN_DIR . 'includes/class-Alias-generator-core.php';
+require_once ALIAS_GENERATOR_PLUGIN_DIR . 'includes/class-alias-generator-admin.php';
+require_once ALIAS_GENERATOR_PLUGIN_DIR . 'includes/class-alias-generator-ajax.php';
+require_once ALIAS_GENERATOR_PLUGIN_DIR . 'includes/class-alias-generator-core.php';
 
 // 初始化插件
 function alias_generator_init() {
