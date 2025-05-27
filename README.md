@@ -35,18 +35,25 @@
 3. 点击 `应用` 按钮，插件将批量为选中的文章生成别名。
 
 ## 截图说明
-<!-- 这里可插入你提供的功能截图，格式如下 -->
 ![配置页面截图](https://hupc-blog-photo.oss-cn-beijing.aliyuncs.com/wp-content/uploads/2025/05/微信图片_20250527153936.png)
 *图 1：LLM API 配置页面*
+
+
 
 ![高级配置页面](https://hupc-blog-photo.oss-cn-beijing.aliyuncs.com/wp-content/uploads/2025/05/微信图片_20250527153943.png)
 *图 2：LLM API 高级配置页面*
 
+
+
 ![功能测试](https://hupc-blog-photo.oss-cn-beijing.aliyuncs.com/wp-content/uploads/2025/05/微信图片_20250527153952.png)
-*图 2：LLM API 功能测试*
+*图 3：LLM API 功能测试*
+
+
 
 ![文章列表功能按钮](https://hupc-blog-photo.oss-cn-beijing.aliyuncs.com/wp-content/uploads/2025/05/微信图片_20250527153957.png)
-*图 2：文章列表功能按钮*
+*图 4：文章列表功能按钮*
+
+
 
 ## 常见问题解答
 ### 测试 API 连接失败怎么办？
