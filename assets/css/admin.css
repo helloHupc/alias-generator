@@ -1,0 +1,27 @@
+/* 基本样式 */
+.llm-generate-alias {
+    color: #2271b1;
+    cursor: pointer;
+}
+
+.llm-generate-alias:hover {
+    color: #135e96;
+}
+
+/* 设置页面样式 */
+.llm-test-section {
+    margin-top: 30px;
+    padding: 20px;
+    background: #f6f7f7;
+    border: 1px solid #dcdcde;
+    max-width: 600px;
+}
+
+.llm-test-section h2 {
+    margin-top: 0;
+}
+
+/* 结果通知 */
+#llm_test_result {
+    margin-top: 15px;
+}
