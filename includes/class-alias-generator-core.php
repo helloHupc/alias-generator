@@ -35,6 +35,7 @@ class Alias_Generator_Core {
 		$settings = get_option('alias_generator_settings');
 		
 		if (empty($settings['api_key'])) {
+			error_log('[Alias Generator] API key not set');
 			return false;
 		}
 		

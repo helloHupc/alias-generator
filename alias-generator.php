@@ -4,7 +4,7 @@ Plugin Name: Alias Generator
 Text Domain: Alias Generator
 Domain Path: /languages
 Description: Generate post alias using LLM APIs
-Version: 1.0
+Version: 1.1
 Author: hupengchen
 License: GPLv2
 */
@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
 }
 
 // 定义插件常量
-define('ALIAS_GENERATOR_VERSION', '1.0');
+define('ALIAS_GENERATOR_VERSION', '1.1');
 define('ALIAS_GENERATOR_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALIAS_GENERATOR_PLUGIN_URL', plugin_dir_url(__FILE__));
 

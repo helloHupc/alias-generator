@@ -8,6 +8,7 @@ class Alias_Generator_Ajax {
     }
     
     public function handle_generate_alias() {
+        error_log('[Alias Generator] AJAX handler called. POST: ' . wp_json_encode($_POST));
         check_ajax_referer('alias_generator_nonce', 'nonce');
         
         if (!current_user_can('edit_posts')) {

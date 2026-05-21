@@ -7,6 +7,7 @@ class Alias_Generator_Admin {
         add_filter('post_row_actions', array($this, 'add_post_row_action'), 10, 2);
         add_filter('bulk_actions-edit-post', array($this, 'add_bulk_action'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_scripts'));
+        add_filter('get_sample_permalink_html', array($this, 'add_edit_page_button'), 10, 5);
     }
     
     public function add_admin_menu() {
@@ -312,25 +313,40 @@ class Alias_Generator_Admin {
     }
     
     public function enqueue_admin_scripts($hook) {
-        if ($hook === 'settings_page_Alias-generator' || $hook === 'edit.php') {
-            wp_register_script(
-                'Alias-generator-admin',
-                ALIAS_GENERATOR_PLUGIN_URL . 'assets/js/admin.js',
-                array('jquery'),
-                ALIAS_GENERATOR_VERSION,
-                true
-            );
-
-            wp_localize_script(
-                'Alias-generator-admin',
-                'alias_generator_vars',
-                array(
-                    'ajax_url' => admin_url('admin-ajax.php'),
-                    'nonce' => wp_create_nonce('alias_generator_nonce')
-                )
-            );
+        $allowed_hooks = array('settings_page_Alias-generator', 'edit.php', 'post.php', 'post-new.php');
+        if (!in_array($hook, $allowed_hooks, true)) {
+            return;
         }
-    
+
+        wp_register_script(
+            'Alias-generator-admin',
+            ALIAS_GENERATOR_PLUGIN_URL . 'assets/js/admin.js',
+            array('jquery'),
+            filemtime(ALIAS_GENERATOR_PLUGIN_DIR . 'assets/js/admin.js'),
+            true
+        );
+
+        $localize_data = array(
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('alias_generator_nonce'),
+            'generating_text' => __('Generating...', 'Alias-generator'),
+            'success_text' => __('Generated!', 'Alias-generator'),
+            'error_text' => __('Error!', 'Alias-generator'),
+            'bulk_action_text' => __('Generate Aliass', 'Alias-generator'),
+        );
+
+        global $post;
+        if ($post && in_array($hook, array('post.php', 'post-new.php'), true)) {
+            $localize_data['post_id'] = $post->ID ?? 0;
+            $localize_data['post_title'] = $post->post_title ?? '';
+        }
+
+        wp_localize_script(
+            'Alias-generator-admin',
+            'alias_generator_vars',
+            $localize_data
+        );
+
         // 只在设置页面加载样式
         if ($hook === 'settings_page_Alias-generator') {
             wp_enqueue_style(
@@ -341,8 +357,22 @@ class Alias_Generator_Admin {
             );
         }
 
-        // 最后加载脚本
         wp_enqueue_script('Alias-generator-admin');
+    }
+
+    /**
+     * 在文章编辑页固定链接后添加生成别名按钮
+     */
+    public function add_edit_page_button($permalink_html, $post_id, $new_title, $new_slug, $post) {
+        if (!current_user_can('edit_post', $post_id)) {
+            return $permalink_html;
+        }
+        $button = sprintf(
+            ' <button type="button" class="button button-small alias-generator-edit-btn" data-post-id="%d">%s</button>',
+            $post_id,
+            __('Generate Alias', 'Alias-generator')
+        );
+        return $permalink_html . $button;
     }
     
     // 其他渲染方法...

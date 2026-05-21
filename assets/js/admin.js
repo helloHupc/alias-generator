@@ -1,5 +1,76 @@
 jQuery(document).ready(function($) {
 
+    // ========== 编辑页/新建页：固定链接后的生成按钮 ==========
+    $(document).on('click', '.alias-generator-edit-btn', function(e) {
+        e.preventDefault();
+
+        if (typeof alias_generator_vars === 'undefined') {
+            console.error('[Alias Generator] alias_generator_vars is not defined');
+            return;
+        }
+
+        var $btn = $(this);
+        var postId = $btn.data('post-id');
+        var originalText = $btn.text();
+
+        console.log('[Alias Generator] Sending AJAX:', {
+            action: 'llm_generate_alias',
+            post_id: postId
+        });
+
+        $btn.prop('disabled', true).text(alias_generator_vars.generating_text || 'Generating...');
+
+        $.ajax({
+            url: alias_generator_vars.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'llm_generate_alias',
+                post_id: postId,
+                nonce: alias_generator_vars.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    var newSlug = response.data.slug;
+                    // 更新隐藏的 slug 输入框
+                    $('#post_name').val(newSlug);
+                    // 更新显示的固定链接
+                    var $samplePermalink = $('#sample-permalink');
+                    if ($samplePermalink.length) {
+                        var baseUrl = $samplePermalink.data('permalink-orig');
+                        if (!baseUrl) {
+                            // 从当前 permalink 结构提取基础 URL
+                            var fullHtml = $samplePermalink.html();
+                            var match = fullHtml.match(/(https?:\/\/[^<]+)\//);
+                            baseUrl = match ? match[1] + '/' : '';
+                        }
+                        $('#editable-post-name').text(newSlug);
+                        $('#editable-post-name-full').text(baseUrl + newSlug);
+                    }
+                    // 更新隐藏的原始 slug（和 WP 内置逻辑同步）
+                    if (typeof wp !== 'undefined' && wp.heartbeat) {
+                        $('#editable-post-name').text(newSlug);
+                    }
+                    $btn.text(alias_generator_vars.success_text || 'Generated!');
+                } else {
+                    alert(response.data.message || 'Generation failed.');
+                    $btn.text(alias_generator_vars.error_text || 'Error!');
+                }
+            },
+            error: function() {
+                $btn.text(alias_generator_vars.error_text || 'Error!');
+                alert('Network error.');
+            },
+            complete: function() {
+                $btn.prop('disabled', false);
+                setTimeout(function() {
+                    if ($btn.text() !== originalText) {
+                        $btn.text(originalText);
+                    }
+                }, 2000);
+            }
+        });
+    });
+
 	// 定义各API供应商的默认配置
     const apiDefaults = {
         'openai': {
@@ -185,8 +256,9 @@ jQuery(document).ready(function($) {
                     post_ids: postIds,
                     nonce: alias_generator_vars.nonce
                 },
-                success: function(response) {
-                    if (response.success) {
+            success: function(response) {
+                console.log('[Alias Generator] AJAX response:', response);
+                if (response.success) {
                         var successCount = 0;
                         var errorCount = 0;
 
