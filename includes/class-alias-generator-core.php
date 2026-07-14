@@ -14,7 +14,7 @@ class Alias_Generator_Core {
 				'api_key' => '',
 				'model_name' => 'gpt-4o-mini',
 				'temperature' => 0.7,
-				'max_tokens' => 60,
+				'max_tokens' => 120,
 				'prompt_template' => 'Generate a SEO-friendly URL slug for the following article title: "{title}". The slug should be concise, use lowercase letters, hyphens as separators, and contain only alphanumeric characters. Respond with only the slug, nothing else.'
 			);
 			update_option('alias_generator_settings', $default_settings);
@@ -73,7 +73,8 @@ class Alias_Generator_Core {
 				)
 			),
 			'temperature' => floatval($settings['temperature']),
-			'max_tokens' => intval($settings['max_tokens'])
+			'max_tokens' => intval($settings['max_tokens']),
+			'stream' => false
 		);
 		
 		return $this->make_api_request($api_url, $headers, $body);
@@ -98,7 +99,8 @@ class Alias_Generator_Core {
 				)
 			),
 			'temperature' => floatval($settings['temperature']),
-			'max_tokens' => intval($settings['max_tokens'])
+			'max_tokens' => intval($settings['max_tokens']),
+			'stream' => false
 		);
 		
 		return $this->make_api_request($api_url, $headers, $body);
@@ -142,30 +144,104 @@ class Alias_Generator_Core {
 
 		$status_code = wp_remote_retrieve_response_code($response);
 		$raw_body = wp_remote_retrieve_body($response);
-		$response_body = json_decode($raw_body, true);
 
 		if ($status_code < 200 || $status_code >= 300) {
 			error_log('[Alias Generator] API HTTP error ' . $status_code . ' from ' . $api_url . ': ' . $raw_body);
 			return false;
 		}
 		
-		// 尝试解析不同格式的响应
-		if (isset($response_body['choices'][0]['message']['content'])) {
-			return sanitize_title(trim($response_body['choices'][0]['message']['content']));
-		} elseif (isset($response_body['content'][0]['text'])) {
-			// Anthropic Messages API
-			return sanitize_title(trim($response_body['content'][0]['text']));
-		} elseif (isset($response_body['output']['text'])) {
-			return sanitize_title(trim($response_body['output']['text']));
-		} elseif (isset($response_body['result'])) {
-			return sanitize_title(trim($response_body['result']));
-		} elseif (isset($response_body['response'])) {
-			return sanitize_title(trim($response_body['response']));
+		$text = $this->extract_text_from_response($raw_body);
+		if ($text !== false && $text !== '') {
+			return sanitize_title($text);
 		}
 		
-		error_log('[Alias Generator] Unexpected response format from ' . $api_url . ': ' . $raw_body);
+		error_log('[Alias Generator] Unexpected or empty response from ' . $api_url . ': ' . $raw_body);
 		return false;
 	}
-    
+
+	/**
+	 * 从响应体中提取文本内容
+	 * 兼容单个 JSON 对象或多个 JSON 对象拼接的情况（如 ModelScope 流式/分块响应）
+	 */
+	private function extract_text_from_response($raw_body) {
+		// 先尝试标准单 JSON 对象
+		$data = json_decode($raw_body, true);
+		$text = $this->get_text_from_decoded($data);
+		if ($text !== false && $text !== '') {
+			return $text;
+		}
+
+		// 尝试提取多个 JSON 对象（有些服务会直接把多个 chunk 拼在一起返回）
+		if (!preg_match_all('/(\{(?:[^{}]++|(?1))*\})/s', $raw_body, $matches)) {
+			return false;
+		}
+
+		$delta_text = '';
+		$message_text = '';
+
+		foreach ($matches[0] as $json) {
+			$data = json_decode($json, true);
+			if (!is_array($data)) {
+				continue;
+			}
+
+			// 优先取最终聚合的 message.content
+			if (isset($data['choices'][0]['message']['content'])) {
+				$message_text .= $data['choices'][0]['message']['content'];
+			}
+
+			// 同时收集流式 delta.content（中间 chunk 可能在这里）
+			if (isset($data['choices'][0]['delta']['content']) && $data['choices'][0]['delta']['content'] !== '') {
+				$delta_text .= $data['choices'][0]['delta']['content'];
+			}
+
+			// Anthropic / 其他格式
+			if (isset($data['content'][0]['text'])) {
+				return trim($data['content'][0]['text']);
+			} elseif (isset($data['output']['text'])) {
+				return trim($data['output']['text']);
+			} elseif (isset($data['result'])) {
+				return trim($data['result']);
+			} elseif (isset($data['response'])) {
+				return trim($data['response']);
+			}
+		}
+
+		$message_text = trim($message_text);
+		$delta_text = trim($delta_text);
+
+		if ($message_text !== '') {
+			return $message_text;
+		}
+		if ($delta_text !== '') {
+			return $delta_text;
+		}
+
+		return false;
+	}
+
+	/**
+	 * 从已解析的响应数组中提取文本
+	 */
+	private function get_text_from_decoded($data) {
+		if (!is_array($data)) {
+			return false;
+		}
+
+		if (isset($data['choices'][0]['message']['content'])) {
+			return trim($data['choices'][0]['message']['content']);
+		} elseif (isset($data['content'][0]['text'])) {
+			// Anthropic Messages API
+			return trim($data['content'][0]['text']);
+		} elseif (isset($data['output']['text'])) {
+			return trim($data['output']['text']);
+		} elseif (isset($data['result'])) {
+			return trim($data['result']);
+		} elseif (isset($data['response'])) {
+			return trim($data['response']);
+		}
+
+		return false;
+	}
 
 }

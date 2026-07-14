@@ -240,11 +240,11 @@ class Alias_Generator_Admin {
 	 */
 	public function render_max_tokens_field() {
 		$settings = get_option('alias_generator_settings');
-		$max_tokens = isset($settings['max_tokens']) ? $settings['max_tokens'] : 60;
+		$max_tokens = isset($settings['max_tokens']) ? $settings['max_tokens'] : 120;
 		?>
 		<input type="number" name="alias_generator_settings[max_tokens]" id="max_tokens" 
-			   value="<?php echo esc_attr($max_tokens); ?>" min="10" max="200">
-		<p class="description">Maximum number of tokens to generate.</p>
+			   value="<?php echo esc_attr($max_tokens); ?>" min="10" max="8192">
+		<p class="description">Maximum number of tokens to generate. For reasoning models (e.g. Hunyuan Hy3), try 1000-2000 if the response is empty.</p>
 		<?php
 	}
 
