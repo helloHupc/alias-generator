@@ -12,7 +12,7 @@ class Alias_Generator_Core {
 				'api_base_url' => 'https://api.openai.com',
 				'api_path' => '/v1/chat/completions',
 				'api_key' => '',
-				'model_name' => 'gpt-3.5-turbo',
+				'model_name' => 'gpt-4o-mini',
 				'temperature' => 0.7,
 				'max_tokens' => 60,
 				'prompt_template' => 'Generate a SEO-friendly URL slug for the following article title: "{title}". The slug should be concise, use lowercase letters, hyphens as separators, and contain only alphanumeric characters. Respond with only the slug, nothing else.'
@@ -45,17 +45,16 @@ class Alias_Generator_Core {
 		$api_url = trailingslashit($settings['api_base_url']) . ltrim($settings['api_path'], '/');
 		
 		// 根据供应商选择不同的请求体结构
+		// 旧供应商（openrouter/qwen/siliconflow）按 custom（OpenAI-compatible）处理，保证向后兼容
 		switch ($settings['api_provider']) {
+			case 'anthropic':
+				return $this->call_anthropic_api($api_url, $settings, $prompt);
 			case 'openai':
 			case 'deepseek':
-			case 'openrouter':
-			case 'siliconflow':
-			case 'qwen':
 				return $this->call_openai_style_api($api_url, $settings, $prompt);
 			case 'custom':
-				return $this->call_custom_api($api_url, $settings, $prompt);
 			default:
-				return false;
+				return $this->call_custom_api($api_url, $settings, $prompt);
 		}
 	}
 	
@@ -64,12 +63,6 @@ class Alias_Generator_Core {
 			'Content-Type' => 'application/json',
 			'Authorization' => 'Bearer ' . $settings['api_key']
 		);
-		
-		// OpenRouter需要额外的头部
-		if ($settings['api_provider'] === 'openrouter') {
-			$headers['HTTP-Referer'] = get_site_url();
-			$headers['X-Title'] = 'WordPress Slug Generator';
-		}
 		
 		$body = array(
 			'model' => $settings['model_name'],
@@ -87,7 +80,7 @@ class Alias_Generator_Core {
 	}
 
 	private function call_custom_api($api_url, $settings, $prompt) {
-		// 自定义API的通用实现
+		// 自定义 API：兼容 OpenAI chat completions 格式（如 ModelScope、OpenRouter、SiliconFlow 等）
 		$headers = array(
 			'Content-Type' => 'application/json'
 		);
@@ -98,9 +91,36 @@ class Alias_Generator_Core {
 		
 		$body = array(
 			'model' => $settings['model_name'],
-			'prompt' => $prompt,
+			'messages' => array(
+				array(
+					'role' => 'user',
+					'content' => $prompt
+				)
+			),
 			'temperature' => floatval($settings['temperature']),
 			'max_tokens' => intval($settings['max_tokens'])
+		);
+		
+		return $this->make_api_request($api_url, $headers, $body);
+	}
+
+	private function call_anthropic_api($api_url, $settings, $prompt) {
+		$headers = array(
+			'Content-Type' => 'application/json',
+			'x-api-key' => $settings['api_key'],
+			'anthropic-version' => '2023-06-01'
+		);
+		
+		$body = array(
+			'model' => $settings['model_name'],
+			'messages' => array(
+				array(
+					'role' => 'user',
+					'content' => $prompt
+				)
+			),
+			'max_tokens' => intval($settings['max_tokens']),
+			'temperature' => floatval($settings['temperature'])
 		);
 		
 		return $this->make_api_request($api_url, $headers, $body);
@@ -124,6 +144,9 @@ class Alias_Generator_Core {
 		// 尝试解析不同格式的响应
 		if (isset($response_body['choices'][0]['message']['content'])) {
 			return sanitize_title(trim($response_body['choices'][0]['message']['content']));
+		} elseif (isset($response_body['content'][0]['text'])) {
+			// Anthropic Messages API
+			return sanitize_title(trim($response_body['content'][0]['text']));
 		} elseif (isset($response_body['output']['text'])) {
 			return sanitize_title(trim($response_body['output']['text']));
 		} elseif (isset($response_body['result'])) {

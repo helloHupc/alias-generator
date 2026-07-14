@@ -71,73 +71,72 @@ jQuery(document).ready(function($) {
         });
     });
 
-	// 定义各API供应商的默认配置
+    // 各 API 供应商的默认配置
     const apiDefaults = {
         'openai': {
             'base_url': 'https://api.openai.com',
             'path': '/v1/chat/completions',
-            'model': 'gpt-3.5-turbo'
+            'model': 'gpt-4o-mini'
+        },
+        'anthropic': {
+            'base_url': 'https://api.anthropic.com',
+            'path': '/v1/messages',
+            'model': 'claude-3-5-sonnet-20241022'
         },
         'deepseek': {
             'base_url': 'https://api.deepseek.com',
             'path': '/v1/chat/completions',
             'model': 'deepseek-chat'
         },
-        'openrouter': {
-            'base_url': 'https://openrouter.ai',
-            'path': '/api/v1/chat/completions',
-            'model': 'openai/gpt-3.5-turbo'
-        },
-        'qwen': {
-            'base_url': 'https://dashscope.aliyuncs.com',
-            'path': '/compatible-mode/v1/chat/completions',
-            'model': 'qwen-plus'
-        },
-		'siliconflow': {
-			'base_url': 'https://api.siliconflow.cn',
-			'path': '/v1/chat/completions',
-			'model': 'deepseek-ai/DeepSeek-V3'
-		},
         'custom': {
             'base_url': '',
-            'path': '',
+            'path': '/v1/chat/completions',
             'model': ''
         }
     };
 
-    // 更新表单字段的函数
-    function updateApiFields(provider) {
+    /**
+     * 更新 API 表单字段
+     * @param {string} provider 供应商 key
+     * @param {boolean} force 为 true 时强制覆盖为默认值（用户主动切换供应商）
+     */
+    function updateApiFields(provider, force) {
         const defaults = apiDefaults[provider] || {};
 
-        // 只更新空值或与默认值相同的字段
         $('#api_base_url').attr('placeholder', defaults.base_url || '');
         $('#api_path').attr('placeholder', defaults.path || '');
         $('#model_name').attr('placeholder', defaults.model || '');
 
-        // 如果当前值为空或等于旧默认值，则更新值
-        if (!$('#api_base_url').val() || Object.values(apiDefaults).some(d => d.base_url === $('#api_base_url').val())) {
+        if (force) {
+            $('#api_base_url').val(defaults.base_url || '');
+            $('#api_path').val(defaults.path || '');
+            $('#model_name').val(defaults.model || '');
+            return;
+        }
+
+        // 初始化或刷新页面时：只填充空值，保留用户已保存的自定义内容
+        var baseUrl = $('#api_base_url').val();
+        var path = $('#api_path').val();
+        var model = $('#model_name').val();
+
+        if (!baseUrl) {
             $('#api_base_url').val(defaults.base_url || '');
         }
-
-        if (!$('#api_path').val() || Object.values(apiDefaults).some(d => d.path === $('#api_path').val())) {
+        if (!path) {
             $('#api_path').val(defaults.path || '');
         }
-
-        if(!$('#model_name').val()){
+        if (!model) {
             $('#model_name').val(defaults.model || '');
         }
     }
 
-    // 初始化页面时设置一次
-    updateApiFields($('#api_provider').val());
+    // 初始化页面时设置一次（不强制覆盖）
+    updateApiFields($('#api_provider').val(), false);
 
-    // 监听API供应商变化
+    // 监听 API 供应商变化（强制覆盖为官方默认值）
     $('#api_provider').on('change', function() {
-        // 清空api_key
         $('#api_key').val('');
-        // 清空模型名称
-        $('#model_name').val('');
-        updateApiFields($(this).val());
+        updateApiFields($(this).val(), true);
     });
 
     // 重置提示词模板
@@ -146,12 +145,12 @@ jQuery(document).ready(function($) {
         $('#prompt_template').val($('#prompt_template').attr('placeholder'));
     });
 
-    // 单篇文章生成slug
+    // 单篇文章生成 slug
     $(document).on('click', '.llm-generate-alias', function(e) {
         e.preventDefault();
         var $button = $(this);
         var postId = $button.data('post-id');
-		console.log('postId',postId)
+        console.log('postId', postId);
 
         $button.text(alias_generator_vars.generating_text);
 
@@ -164,10 +163,10 @@ jQuery(document).ready(function($) {
                 nonce: alias_generator_vars.nonce
             },
             success: function(response) {
-				console.log('response',response)
+                console.log('response', response);
                 if (response.success) {
                     $button.text(alias_generator_vars.success_text);
-                    // 刷新页面以显示新slug
+                    // 刷新页面以显示新 slug
                     setTimeout(function() {
                         location.reload();
                     }, 1000);
@@ -182,13 +181,13 @@ jQuery(document).ready(function($) {
         });
     });
 
-    // 批量生成slug
+    // 批量生成 slug
     var bulkAction = $('select[name="action"]');
     if (bulkAction.length) {
         bulkAction.append($('<option>').val('batch_generate_alias').text(alias_generator_vars.bulk_action_text));
     }
 
-    // 测试API连接
+    // 测试 API 连接
     $('#llm_test_button').on('click', function() {
         var $button = $(this);
         var testTitle = $('#llm_test_title').val();
@@ -256,9 +255,9 @@ jQuery(document).ready(function($) {
                     post_ids: postIds,
                     nonce: alias_generator_vars.nonce
                 },
-            success: function(response) {
-                console.log('[Alias Generator] AJAX response:', response);
-                if (response.success) {
+                success: function(response) {
+                    console.log('[Alias Generator] AJAX response:', response);
+                    if (response.success) {
                         var successCount = 0;
                         var errorCount = 0;
 
