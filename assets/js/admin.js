@@ -88,6 +88,11 @@ jQuery(document).ready(function($) {
             'path': '/v1/chat/completions',
             'model': 'deepseek-chat'
         },
+        'modelscope': {
+            'base_url': 'https://api-inference.modelscope.cn',
+            'path': '/v1/chat/completions',
+            'model': 'Tencent-Hunyuan/Hy3'
+        },
         'custom': {
             'base_url': '',
             'path': '/v1/chat/completions',

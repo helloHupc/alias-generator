@@ -45,13 +45,14 @@ class Alias_Generator_Core {
 		$api_url = trailingslashit($settings['api_base_url']) . ltrim($settings['api_path'], '/');
 		
 		// 根据供应商选择不同的请求体结构
-		// 旧供应商（openrouter/qwen/siliconflow）按 custom（OpenAI-compatible）处理，保证向后兼容
 		switch ($settings['api_provider']) {
 			case 'anthropic':
 				return $this->call_anthropic_api($api_url, $settings, $prompt);
 			case 'openai':
 			case 'deepseek':
 				return $this->call_openai_style_api($api_url, $settings, $prompt);
+			case 'modelscope':
+				return $this->call_modelscope_api($api_url, $settings, $prompt);
 			case 'custom':
 			default:
 				return $this->call_custom_api($api_url, $settings, $prompt);
@@ -81,7 +82,7 @@ class Alias_Generator_Core {
 	}
 
 	private function call_custom_api($api_url, $settings, $prompt) {
-		// 自定义 API：兼容 OpenAI chat completions 格式（如 ModelScope、OpenRouter、SiliconFlow 等）
+		// 自定义 API：标准 OpenAI chat completions 格式（如 OpenRouter、SiliconFlow 等）
 		$headers = array(
 			'Content-Type' => 'application/json'
 		);
@@ -104,6 +105,29 @@ class Alias_Generator_Core {
 		);
 		
 		return $this->make_api_request($api_url, $headers, $body);
+	}
+
+	private function call_modelscope_api($api_url, $settings, $prompt) {
+		// ModelScope：名义上 OpenAI-compatible，但非流式会返回多个 JSON 对象拼接
+		$headers = array(
+			'Content-Type' => 'application/json',
+			'Authorization' => 'Bearer ' . $settings['api_key']
+		);
+		
+		$body = array(
+			'model' => $settings['model_name'],
+			'messages' => array(
+				array(
+					'role' => 'user',
+					'content' => $prompt
+				)
+			),
+			'temperature' => floatval($settings['temperature']),
+			'max_tokens' => intval($settings['max_tokens']),
+			'stream' => false
+		);
+		
+		return $this->make_modelscope_request($api_url, $headers, $body);
 	}
 
 	private function call_anthropic_api($api_url, $settings, $prompt) {
@@ -132,7 +156,39 @@ class Alias_Generator_Core {
 		$args = array(
 			'headers' => $headers,
 			'body' => json_encode($body),
-			'timeout' => 30
+			'timeout' => 60
+		);
+
+		$response = wp_remote_post($api_url, $args);
+		
+		if (is_wp_error($response)) {
+			error_log('[Alias Generator] API request error: ' . $response->get_error_message());
+			return false;
+		}
+
+		$status_code = wp_remote_retrieve_response_code($response);
+		$raw_body = wp_remote_retrieve_body($response);
+
+		if ($status_code < 200 || $status_code >= 300) {
+			error_log('[Alias Generator] API HTTP error ' . $status_code . ' from ' . $api_url . ': ' . $raw_body);
+			return false;
+		}
+		
+		$response_body = json_decode($raw_body, true);
+		$text = $this->get_text_from_decoded($response_body);
+		if ($text !== false && $text !== '') {
+			return sanitize_title($text);
+		}
+		
+		error_log('[Alias Generator] Unexpected or empty response from ' . $api_url . ': ' . $raw_body);
+		return false;
+	}
+
+	private function make_modelscope_request($api_url, $headers, $body) {
+		$args = array(
+			'headers' => $headers,
+			'body' => json_encode($body),
+			'timeout' => 60
 		);
 
 		$response = wp_remote_post($api_url, $args);
@@ -161,7 +217,7 @@ class Alias_Generator_Core {
 
 	/**
 	 * 从响应体中提取文本内容
-	 * 兼容单个 JSON 对象或多个 JSON 对象拼接的情况（如 ModelScope 流式/分块响应）
+	 * 兼容单个 JSON 对象或多个 JSON 对象拼接的情况（ModelScope 非标准返回）
 	 */
 	private function extract_text_from_response($raw_body) {
 		// 先尝试标准单 JSON 对象

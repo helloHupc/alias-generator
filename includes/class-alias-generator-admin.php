@@ -137,21 +137,24 @@ class Alias_Generator_Admin {
 			'openai' => 'OpenAI',
 			'anthropic' => 'Anthropic',
 			'deepseek' => 'DeepSeek',
-			'custom' => 'Custom (OpenAI-compatible)',
-			// 旧供应商保持可选，后端按 custom 处理以保证向后兼容
-			'openrouter' => 'OpenRouter (legacy)',
-			'qwen' => 'Qwen (legacy)',
-			'siliconflow' => 'SiliconFlow (legacy)'
+			'modelscope' => 'ModelScope',
+			'custom' => 'Custom (OpenAI-compatible)'
 		);
+
+		$current_provider = isset($settings['api_provider']) ? $settings['api_provider'] : 'openai';
+		// 旧供应商已移除，若仍保存着旧值，显示为 Custom
+		if (!isset($providers[$current_provider])) {
+			$current_provider = 'custom';
+		}
 		?>
 		<select name="alias_generator_settings[api_provider]" id="api_provider">
 			<?php foreach ($providers as $value => $label): ?>
-				<option value="<?php echo esc_attr($value); ?>" <?php selected(isset($settings['api_provider']) ? $settings['api_provider'] : '', $value); ?>>
+				<option value="<?php echo esc_attr($value); ?>" <?php selected($current_provider, $value); ?>>
 					<?php echo esc_html($label); ?>
 				</option>
 			<?php endforeach; ?>
 		</select>
-		<p class="description">Select your API provider or choose Custom for OpenAI-compatible endpoints (e.g. ModelScope, OpenRouter, SiliconFlow).</p>
+		<p class="description">Select your API provider or choose Custom for standard OpenAI-compatible endpoints (e.g. OpenRouter, SiliconFlow).</p>
 		<?php
 	}
 
@@ -174,6 +177,7 @@ class Alias_Generator_Admin {
 			'openai' => 'https://api.openai.com',
 			'anthropic' => 'https://api.anthropic.com',
 			'deepseek' => 'https://api.deepseek.com',
+			'modelscope' => 'https://api-inference.modelscope.cn',
 			'custom' => ''
 		);
 		$current_provider = isset($settings['api_provider']) ? $settings['api_provider'] : 'openai';
@@ -192,6 +196,7 @@ class Alias_Generator_Admin {
 			'openai' => '/v1/chat/completions',
 			'anthropic' => '/v1/messages',
 			'deepseek' => '/v1/chat/completions',
+			'modelscope' => '/v1/chat/completions',
 			'custom' => '/v1/chat/completions'
 		);
 		$current_provider = isset($settings['api_provider']) ? $settings['api_provider'] : 'openai';
@@ -210,6 +215,7 @@ class Alias_Generator_Admin {
 			'openai' => 'gpt-4o-mini',
 			'anthropic' => 'claude-3-5-sonnet-20241022',
 			'deepseek' => 'deepseek-chat',
+			'modelscope' => 'Tencent-Hunyuan/Hy3',
 			'custom' => ''
 		);
 		$current_provider = isset($settings['api_provider']) ? $settings['api_provider'] : 'openai';
@@ -218,7 +224,7 @@ class Alias_Generator_Admin {
 		<input type="text" name="alias_generator_settings[model_name]" id="model_name" 
 			   value="<?php echo esc_attr(isset($settings['model_name']) ? $settings['model_name'] : $default_model); ?>" 
 			   class="regular-text" placeholder="<?php echo esc_attr($default_model); ?>">
-		<p class="description">Model name to use (e.g. gpt-4o-mini, deepseek-chat, claude-3-5-sonnet-20241022)</p>
+		<p class="description">Model name to use (e.g. gpt-4o-mini, deepseek-chat, Tencent-Hunyuan/Hy3)</p>
 		<?php
 	}
 
