@@ -136,11 +136,19 @@ class Alias_Generator_Core {
 		$response = wp_remote_post($api_url, $args);
 		
 		if (is_wp_error($response)) {
-			error_log('LLM Slug Generator API Error: ' . $response->get_error_message());
+			error_log('[Alias Generator] API request error: ' . $response->get_error_message());
+			return false;
+		}
+
+		$status_code = wp_remote_retrieve_response_code($response);
+		$raw_body = wp_remote_retrieve_body($response);
+		$response_body = json_decode($raw_body, true);
+
+		if ($status_code < 200 || $status_code >= 300) {
+			error_log('[Alias Generator] API HTTP error ' . $status_code . ' from ' . $api_url . ': ' . $raw_body);
 			return false;
 		}
 		
-		$response_body = json_decode(wp_remote_retrieve_body($response), true);
 		// 尝试解析不同格式的响应
 		if (isset($response_body['choices'][0]['message']['content'])) {
 			return sanitize_title(trim($response_body['choices'][0]['message']['content']));
@@ -155,7 +163,7 @@ class Alias_Generator_Core {
 			return sanitize_title(trim($response_body['response']));
 		}
 		
-		error_log('LLM Slug Generator API Error: Unexpected response format');
+		error_log('[Alias Generator] Unexpected response format from ' . $api_url . ': ' . $raw_body);
 		return false;
 	}
     
